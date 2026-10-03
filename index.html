@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>doknowdocare</title>
+<meta name="description" content="The same projected grid on different datums. Zoom in until they disagree.">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a1a; --muted: #666; --panel: rgba(255,255,255,0.94); --line: #ddd;
+    --ok: #2e7d32; --warn: #b26a00; --bad: #c62828;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111; --fg: #eee; --muted: #9a9a9a; --panel: rgba(20,20,20,0.94); --line: #333; }
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #map { position: absolute; inset: 0; }
+  #panel { position: absolute; top: 12px; left: 12px; width: 320px; max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px); overflow: auto; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px; padding: 14px 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); z-index: 5; }
+  h1 { font-size: 20px; margin: 0 0 2px; letter-spacing: -0.01em; }
+  h1 small { font-weight: 400; color: var(--muted); font-size: 13px; display: block; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 14px 0 6px; }
+  p { margin: 6px 0; }
+  .blurb { color: var(--muted); font-size: 13px; }
+  select, input[type=range] { width: 100%; }
+  select { padding: 4px; font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; }
+  label.datum { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
+  label.datum .sw { width: 18px; height: 4px; border-radius: 2px; flex: none; }
+  label.datum .crs { color: var(--muted); font-size: 12px; margin-left: auto; font-family: ui-monospace, monospace; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td { padding: 3px 4px; border-top: 1px solid var(--line); vertical-align: top; }
+  td.num { text-align: right; font-family: ui-monospace, monospace; white-space: nowrap; }
+  .v { font-weight: 600; }
+  .v.ok { color: var(--ok); } .v.warn { color: var(--warn); } .v.bad { color: var(--bad); }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .row label { flex: 1; }
+  .foot { color: var(--muted); font-size: 12px; margin-top: 12px; }
+  .foot a { color: inherit; }
+  .zoom { font-family: ui-monospace, monospace; }
+  button { font: inherit; padding: 3px 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 4px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="panel">
+  <h1>doknowdocare <small>The same grid, on different datums. Zoom in until they disagree.</small></h1>
+
+  <h2>Scene</h2>
+  <select id="scene"></select>
+  <p class="blurb" id="blurb"></p>
+
+  <h2>Datums</h2>
+  <div id="datums"></div>
+
+  <h2>Basemap</h2>
+  <div class="row">
+    <label><input type="radio" name="base" value="vector" checked> Streets</label>
+    <label><input type="radio" name="base" value="imagery"> Imagery</label>
+  </div>
+
+  <h2>At this zoom</h2>
+  <table>
+    <tr><td>zoom</td><td class="num zoom" id="z"></td></tr>
+    <tr><td>metres per pixel</td><td class="num" id="mpp"></td></tr>
+  </table>
+  <table id="offsets" style="margin-top:8px"></table>
+
+  <div class="row" style="margin-top:10px">
+    <button id="recentre">Recentre</button>
+    <label style="flex:1">width <input type="range" id="width" min="0.5" max="4" step="0.5" value="1.5"></label>
+  </div>
+
+  <p class="foot">Grid lines are labelled with their easting or northing. Each colour is the
+    same set of labels realised on a different datum. Lines were transformed with PROJ
+    (<span id="projv"></span>) into the scene's modern frame, which the map treats as WGS84.
+    <a href="https://github.com/hypertidy/doknowdocare">Source</a>.</p>
+</div>
+
+<script>
+const OPENFREEMAP = "https://tiles.openfreemap.org/styles/liberty";
+const IMAGERY = {
+  version: 8,
+  sources: {
+    esri: {
+      type: "raster", tileSize: 256, maxzoom: 19,
+      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+      attribution: "Imagery: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+    }
+  },
+  layers: [{ id: "esri", type: "raster", source: "esri" }]
+};
+
+let META = null, scene = null, map = null;
+const enabled = {};   // datum key -> bool
+
+function pixelSize(zoom, lat) {
+  // MapLibre: 512 px tiles, whole world at zoom 0
+  return 40075016.686 * Math.cos(lat * Math.PI / 180) / (512 * Math.pow(2, zoom));
+}
+
+function verdict(px) {
+  if (px < 0.5) return ["invisible", "ok"];
+  if (px < 2) return ["sub-pixel", "ok"];
+  if (px < 10) return ["visible", "warn"];
+  return ["glaring", "bad"];
+}
+
+function datumById(k) { return scene.datums.find(d => d.key === k); }
+
+function addGridLayers() {
+  for (const d of scene.datums) {
+    const src = "grid-" + d.key;
+    if (map.getSource(src)) continue;
+    map.addSource(src, { type: "geojson", data: d.file });
+    const w = parseFloat(document.getElementById("width").value);
+    map.addLayer({
+      id: "line-" + d.key, type: "line", source: src,
+      layout: { visibility: enabled[d.key] ? "visible" : "none", "line-cap": "round" },
+      paint: {
+        "line-color": d.color,
+        "line-width": ["case", ["==", ["get", "spacing"], scene.spacings_m[0]], w * 1.6, w],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.6, 14, 0.9]
+      }
+    });
+    map.addLayer({
+      id: "label-" + d.key, type: "symbol", source: src,
+      filter: ["==", ["get", "spacing"], scene.spacings_m[0]],
+      minzoom: 12,
+      layout: {
+        visibility: enabled[d.key] ? "visible" : "none",
+        "symbol-placement": "line", "symbol-spacing": 400,
+        "text-field": ["concat", ["get", "axis"], " ", ["to-string", ["get", "value"]]],
+        "text-size": 11, "text-font": ["Noto Sans Regular"], "text-pitch-alignment": "viewport",
+        "text-rotation-alignment": "map"
+      },
+      paint: { "text-color": d.color, "text-halo-color": "rgba(255,255,255,0.85)", "text-halo-width": 1.5 }
+    });
+  }
+}
+
+function setVisibility() {
+  for (const s of META.scenes) for (const d of s.datums) {
+    const v = (s === scene && enabled[d.key]) ? "visible" : "none";
+    for (const id of ["line-" + d.key, "label-" + d.key]) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v);
+  }
+}
+
+function renderDatums() {
+  const el = document.getElementById("datums");
+  el.innerHTML = "";
+  for (const d of scene.datums) {
+    const l = document.createElement("label"); l.className = "datum";
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!enabled[d.key];
+    cb.addEventListener("change", () => { enabled[d.key] = cb.checked; setVisibility(); renderOffsets(); });
+    const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = d.color;
+    const name = document.createElement("span"); name.textContent = d.label;
+    const crs = document.createElement("span"); crs.className = "crs"; crs.textContent = d.crs;
+    l.append(cb, sw, name, crs); el.append(l);
+  }
+}
+
+function renderOffsets() {
+  if (!map || !scene) return;
+  const z = map.getZoom(), lat = map.getCenter().lat;
+  const mpp = pixelSize(z, lat);
+  document.getElementById("z").textContent = z.toFixed(2);
+  document.getElementById("mpp").textContent = mpp >= 1 ? mpp.toFixed(2) + " m" : (mpp * 100).toFixed(1) + " cm";
+  const t = document.getElementById("offsets");
+  t.innerHTML = "";
+  for (const o of scene.offsets) {
+    const a = datumById(o.from), b = datumById(o.to);
+    const px = o.metres / mpp;
+    const [word, cls] = verdict(px);
+    const tr = document.createElement("tr");
+    const dim = !(enabled[o.from] && enabled[o.to]);
+    tr.style.opacity = dim ? 0.45 : 1;
+    tr.innerHTML = `<td><span style="color:${a.color}">${o.from}</span> vs <span style="color:${b.color}">${o.to}</span></td>` +
+      `<td class="num">${o.metres.toFixed(2)} m<br>${px < 10 ? px.toFixed(1) : Math.round(px)} px</td>` +
+      `<td class="v ${cls}">${word}</td>`;
+    t.append(tr);
+  }
+}
+
+function loadScene(key) {
+  scene = META.scenes.find(s => s.key === key);
+  document.getElementById("blurb").textContent = scene.blurb;
+  for (const k of Object.keys(enabled)) delete enabled[k];
+  for (const d of scene.datums) enabled[d.key] = true;
+  renderDatums();
+  if (map.isStyleLoaded()) { addGridLayers(); setVisibility(); }
+  map.jumpTo({ center: scene.centre, zoom: 15 });
+  renderOffsets();
+  history.replaceState(null, "", "#" + key);
+}
+
+function setBase(kind) {
+  const style = kind === "imagery" ? IMAGERY : OPENFREEMAP;
+  map.setStyle(style);
+  map.once("style.load", () => {
+    if (kind === "imagery") {
+      // the symbol layer needs glyphs; borrow OpenFreeMap's
+      map.setGlyphs("https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf");
+    }
+    addGridLayers(); setVisibility();
+  });
+}
+
+fetch("data/scenes.json").then(r => r.json()).then(meta => {
+  META = meta;
+  document.getElementById("projv").textContent = "PROJ " + meta.proj_version;
+  const sel = document.getElementById("scene");
+  for (const s of meta.scenes) { const o = document.createElement("option"); o.value = s.key; o.textContent = s.title; sel.append(o); }
+  const initial = (location.hash.slice(1) && meta.scenes.some(s => s.key === location.hash.slice(1))) ? location.hash.slice(1) : meta.scenes[0].key;
+  sel.value = initial;
+  scene = meta.scenes.find(s => s.key === initial);
+
+  map = new maplibregl.Map({ container: "map", style: OPENFREEMAP, center: scene.centre, zoom: 15, hash: false, attributionControl: true });
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), "top-right");
+  map.addControl(new maplibregl.ScaleControl({ maxWidth: 160 }), "bottom-right");
+  map.on("load", () => { loadScene(initial); });
+  map.on("zoom", renderOffsets);
+  map.on("move", renderOffsets);
+
+  sel.addEventListener("change", () => loadScene(sel.value));
+  document.getElementById("recentre").addEventListener("click", () => map.jumpTo({ center: scene.centre, zoom: 15 }));
+  document.getElementById("width").addEventListener("input", (e) => {
+    const w = parseFloat(e.target.value);
+    for (const d of scene.datums) if (map.getLayer("line-" + d.key))
+      map.setPaintProperty("line-" + d.key, "line-width", ["case", ["==", ["get", "spacing"], scene.spacings_m[0]], w * 1.6, w]);
+  });
+  for (const r of document.querySelectorAll("input[name=base]")) r.addEventListener("change", () => setBase(r.value));
+});
+</script>
+</body>
+</html>
