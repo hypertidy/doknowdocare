@@ -23,21 +23,33 @@
      "key": "agd66",
      "label": "AGD66 (AMG zone 56)",
      "crs": "EPSG:20256",
-     "color": "#c0392b",
+     "color": "#D55E00",
+     "dash": [
+      1,
+      0
+     ],
      "file": "data/sydney/agd66.geojson"
     },
     {
      "key": "gda94",
      "label": "GDA94 (MGA94 zone 56)",
      "crs": "EPSG:28356",
-     "color": "#2980b9",
+     "color": "#0072B2",
+     "dash": [
+      4,
+      3
+     ],
      "file": "data/sydney/gda94.geojson"
     },
     {
      "key": "gda2020",
      "label": "GDA2020 (MGA2020 zone 56)",
      "crs": "EPSG:7856",
-     "color": "#27ae60",
+     "color": "#CC79A7",
+     "dash": [
+      1,
+      2
+     ],
      "file": "data/sydney/gda2020.geojson"
     }
    ],
@@ -84,14 +96,22 @@
      "key": "nad83_2011",
      "label": "NAD83(2011) epoch 2010.0",
      "crs": "EPSG:6339",
-     "color": "#c0392b",
+     "color": "#D55E00",
+     "dash": [
+      1,
+      0
+     ],
      "file": "data/seattle/nad83_2011.geojson"
     },
     {
      "key": "natrf2022",
      "label": "NATRF2022 (ITRF2020 @ 2020.0)",
      "crs": "NATRF2022 / UTM 10N (no EPSG code yet)",
-     "color": "#27ae60",
+     "color": "#CC79A7",
+     "dash": [
+      1,
+      2
+     ],
      "file": "data/seattle/natrf2022.geojson"
     }
    ],

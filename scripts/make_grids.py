@@ -113,6 +113,7 @@ class Datum:
     geographic: str | None      # its geographic base (None = derive from projected)
     to_display: Transformer | None = None   # geographic -> display frame
     color: str = "#000000"
+    dash: list = field(default_factory=lambda: [1, 0])   # line-dasharray, in line widths
 
 
 @dataclass
@@ -148,9 +149,9 @@ def sydney() -> Scene:
         bbox_ll=bbox,
     )
     s.datums = [
-        Datum("agd66", "AGD66 (AMG zone 56)", "EPSG:20256", "EPSG:20256", "EPSG:4202", color="#c0392b"),
-        Datum("gda94", "GDA94 (MGA94 zone 56)", "EPSG:28356", "EPSG:28356", "EPSG:4283", color="#2980b9"),
-        Datum("gda2020", "GDA2020 (MGA2020 zone 56)", "EPSG:7856", "EPSG:7856", "EPSG:7844", color="#27ae60"),
+        Datum("agd66", "AGD66 (AMG zone 56)", "EPSG:20256", "EPSG:20256", "EPSG:4202", color="#D55E00", dash=[1, 0]),
+        Datum("gda94", "GDA94 (MGA94 zone 56)", "EPSG:28356", "EPSG:28356", "EPSG:4283", color="#0072B2", dash=[4, 3]),
+        Datum("gda2020", "GDA2020 (MGA2020 zone 56)", "EPSG:7856", "EPSG:7856", "EPSG:7844", color="#CC79A7", dash=[1, 2]),
     ]
     print("sydney", file=sys.stderr)
     for d in s.datums:
@@ -179,9 +180,9 @@ def seattle() -> Scene:
         bbox_ll=bbox,
     )
     s.datums = [
-        Datum("nad83_2011", "NAD83(2011) epoch 2010.0", "EPSG:6339", "EPSG:6339", "EPSG:6318", color="#c0392b"),
+        Datum("nad83_2011", "NAD83(2011) epoch 2010.0", "EPSG:6339", "EPSG:6339", "EPSG:6318", color="#D55E00", dash=[1, 0]),
         Datum("natrf2022", "NATRF2022 (ITRF2020 @ 2020.0)", "NATRF2022 / UTM 10N (no EPSG code yet)",
-              "+proj=utm +zone=10 +ellps=GRS80 +units=m +no_defs", None, color="#27ae60"),
+              "+proj=utm +zone=10 +ellps=GRS80 +units=m +no_defs", None, color="#CC79A7", dash=[1, 2]),
     ]
     print("seattle", file=sys.stderr)
     pipe = nad83_2011_to_natrf2022_pipeline()
@@ -266,7 +267,7 @@ def write_scene(s: Scene):
         "centre": centre_ll[s.datums[-1].key],
         "centre_en": list(s.centre_en),
         "spacings_m": list(s.spacings_m),
-        "datums": [{"key": d.key, "label": d.label, "crs": d.note, "color": d.color,
+        "datums": [{"key": d.key, "label": d.label, "crs": d.note, "color": d.color, "dash": d.dash,
                     "file": f"data/{s.key}/{d.key}.geojson"} for d in s.datums],
         "offsets": offsets,
     }

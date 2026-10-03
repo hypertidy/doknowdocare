@@ -10,7 +10,7 @@
 <style>
   :root {
     --bg: #ffffff; --fg: #1a1a1a; --muted: #666; --panel: rgba(255,255,255,0.94); --line: #ddd;
-    --ok: #2e7d32; --warn: #b26a00; --bad: #c62828;
+    --ok: #0072B2; --warn: #B07800; --bad: #D55E00;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #111; --fg: #eee; --muted: #9a9a9a; --panel: rgba(20,20,20,0.94); --line: #333; }
@@ -29,13 +29,14 @@
   select, input[type=range] { width: 100%; }
   select { padding: 4px; font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; }
   label.datum { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
-  label.datum .sw { width: 18px; height: 4px; border-radius: 2px; flex: none; }
+  label.datum .sw { width: 28px; height: 6px; flex: none; display: inline-flex; }
   label.datum .crs { color: var(--muted); font-size: 12px; margin-left: auto; font-family: ui-monospace, monospace; }
+  label.datum input[type=color] { width: 22px; height: 18px; padding: 0; border: 1px solid var(--line); border-radius: 3px; background: none; flex: none; cursor: pointer; }
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
   td { padding: 3px 4px; border-top: 1px solid var(--line); vertical-align: top; }
   td.num { text-align: right; font-family: ui-monospace, monospace; white-space: nowrap; }
   .v { font-weight: 600; }
-  .v.ok { color: var(--ok); } .v.warn { color: var(--warn); } .v.bad { color: var(--bad); }
+  .v.ok { color: var(--muted); font-weight: 400; } .v.warn { color: var(--warn); } .v.bad { color: var(--bad); }
   .row { display: flex; gap: 10px; align-items: center; }
   .row label { flex: 1; }
   .foot { color: var(--muted); font-size: 12px; margin-top: 12px; }
@@ -106,7 +107,7 @@ function verdict(px) {
   if (px < 0.5) return ["invisible", "ok"];
   if (px < 2) return ["sub-pixel", "ok"];
   if (px < 10) return ["visible", "warn"];
-  return ["glaring", "bad"];
+  return ["GLARING", "bad"];
 }
 
 function datumById(k) { return scene.datums.find(d => d.key === k); }
@@ -119,9 +120,10 @@ function addGridLayers() {
     const w = parseFloat(document.getElementById("width").value);
     map.addLayer({
       id: "line-" + d.key, type: "line", source: src,
-      layout: { visibility: enabled[d.key] ? "visible" : "none", "line-cap": "round" },
+      layout: { visibility: enabled[d.key] ? "visible" : "none", "line-cap": d.dash[1] ? "butt" : "round" },
       paint: {
         "line-color": d.color,
+        "line-dasharray": d.dash,
         "line-width": ["case", ["==", ["get", "spacing"], scene.spacings_m[0]], w * 1.6, w],
         "line-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.6, 14, 0.9]
       }
@@ -156,10 +158,20 @@ function renderDatums() {
     const l = document.createElement("label"); l.className = "datum";
     const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!enabled[d.key];
     cb.addEventListener("change", () => { enabled[d.key] = cb.checked; setVisibility(); renderOffsets(); });
-    const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = d.color;
+    const sw = document.createElement("span"); sw.className = "sw";
+    sw.innerHTML = `<svg width="28" height="6" viewBox="0 0 28 6"><line x1="0" y1="3" x2="28" y2="3" stroke="${d.color}" stroke-width="3" stroke-dasharray="${d.dash[1] ? d.dash.map(v => v * 3).join(" ") : "none"}"/></svg>`;
     const name = document.createElement("span"); name.textContent = d.label;
     const crs = document.createElement("span"); crs.className = "crs"; crs.textContent = d.crs;
-    l.append(cb, sw, name, crs); el.append(l);
+    const pick = document.createElement("input"); pick.type = "color"; pick.value = d.color; pick.title = "line colour";
+    pick.addEventListener("click", (e) => e.stopPropagation());
+    pick.addEventListener("input", () => {
+      d.color = pick.value;
+      sw.querySelector("line").setAttribute("stroke", d.color);
+      if (map.getLayer("line-" + d.key)) map.setPaintProperty("line-" + d.key, "line-color", d.color);
+      if (map.getLayer("label-" + d.key)) map.setPaintProperty("label-" + d.key, "text-color", d.color);
+      renderOffsets();
+    });
+    l.append(cb, sw, name, crs, pick); el.append(l);
   }
 }
 
