@@ -145,7 +145,7 @@ def sydney() -> Scene:
         display_frame="EPSG:7844",
         centre_en=(337_542, 6_250_102),
         half_km=6,
-        spacings_m=(1000, 100),
+        spacings_m=(1000, 250),
         bbox_ll=bbox,
     )
     s.datums = [
@@ -182,7 +182,7 @@ def melbourne() -> Scene:
         display_frame="EPSG:7844",
         centre_en=(2_496_751, 2_409_712),
         half_km=6,
-        spacings_m=(1000, 100),
+        spacings_m=(1000, 250),
         bbox_ll=bbox,
     )
     s.datums = [
@@ -210,7 +210,7 @@ def paris() -> Scene:
         display_frame="EPSG:4258",
         centre_en=(448_252, 5_411_955),
         half_km=6,
-        spacings_m=(1000, 100),
+        spacings_m=(1000, 250),
         bbox_ll=bbox,
     )
     s.datums = [
@@ -237,7 +237,7 @@ def seattle() -> Scene:
         display_frame="NATRF2022",
         centre_en=(550_000, 5_273_000),
         half_km=6,
-        spacings_m=(1000, 100),
+        spacings_m=(1000, 250),
         bbox_ll=bbox,
     )
     s.datums = [
@@ -290,6 +290,8 @@ def write_scene(s: Scene):
     scene_dir.mkdir(parents=True, exist_ok=True)
     # scene centre in each datum, for the offset readout
     centre_ll = {}
+    coarse = s.spacings_m[0]
+    anchors = {"E": round(s.centre_en[0] / coarse) * coarse, "N": round(s.centre_en[1] / coarse) * coarse}
     for d in s.datums:
         (lon, lat), = project_to_display(d, [s.centre_en])
         centre_ll[d.key] = [round(lon, 9), round(lat, 9)]
@@ -299,9 +301,10 @@ def write_scene(s: Scene):
                 if spacing != s.spacings_m[0] and val % s.spacings_m[0] == 0:
                     continue  # don't double-draw the coarse lines
                 coords = [[round(x, 7), round(y, 7)] for x, y in project_to_display(d, pts)]
+                anchor = val == anchors[axis]
                 feats.append({
                     "type": "Feature",
-                    "properties": {"axis": axis, "value": val, "spacing": spacing, "datum": d.key},
+                    "properties": {"axis": axis, "value": val, "spacing": spacing, "datum": d.key, "anchor": anchor},
                     "geometry": {"type": "LineString", "coordinates": coords},
                 })
         fc = {"type": "FeatureCollection", "features": feats}
@@ -328,6 +331,7 @@ def write_scene(s: Scene):
         "centre": centre_ll[s.datums[-1].key],
         "centre_en": list(s.centre_en),
         "spacings_m": list(s.spacings_m),
+        "anchors": anchors,
         "datums": [{"key": d.key, "label": d.label, "crs": d.note, "color": d.color, "dash": d.dash,
                     "file": f"data/{s.key}/{d.key}.geojson"} for d in s.datums],
         "offsets": offsets,

@@ -76,7 +76,8 @@
   </div>
 
   <p class="foot">Grid lines are labelled with their easting or northing. Each colour is the
-    same set of labels realised on a different datum. Lines were transformed with PROJ
+    same set of labels realised on a different datum. The heavy pair in each colour is the
+    same labelled line (<span id="anchors"></span>): where those sit apart is the offset. Lines were transformed with PROJ
     (<span id="projv"></span>) into the scene's modern frame, which the map treats as WGS84.
     <a href="https://github.com/hypertidy/doknowdocare">Source</a>.</p>
 </div>
@@ -111,6 +112,10 @@ function verdict(px) {
   return ["GLARING", "bad"];
 }
 
+function lineWidth(w) {
+  return ["case", ["get", "anchor"], w * 3.2, ["==", ["get", "spacing"], scene.spacings_m[0]], w * 1.6, w];
+}
+
 function datumById(k) { return scene.datums.find(d => d.key === k); }
 
 function addGridLayers() {
@@ -125,7 +130,7 @@ function addGridLayers() {
       paint: {
         "line-color": d.color,
         ...(d.dash[1] ? { "line-dasharray": d.dash } : {}),
-        "line-width": ["case", ["==", ["get", "spacing"], scene.spacings_m[0]], w * 1.6, w],
+        "line-width": lineWidth(w),
         "line-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.6, 14, 0.9]
       }
     });
@@ -201,6 +206,7 @@ function renderOffsets() {
 function loadScene(key) {
   scene = META.scenes.find(s => s.key === key);
   document.getElementById("blurb").textContent = scene.blurb;
+  document.getElementById("anchors").textContent = "E " + scene.anchors.E + ", N " + scene.anchors.N;
   for (const k of Object.keys(enabled)) delete enabled[k];
   for (const d of scene.datums) enabled[d.key] = true;
   renderDatums();
@@ -243,7 +249,7 @@ fetch("data/scenes.json").then(r => r.json()).then(meta => {
   document.getElementById("width").addEventListener("input", (e) => {
     const w = parseFloat(e.target.value);
     for (const d of scene.datums) if (map.getLayer("line-" + d.key))
-      map.setPaintProperty("line-" + d.key, "line-width", ["case", ["==", ["get", "spacing"], scene.spacings_m[0]], w * 1.6, w]);
+      map.setPaintProperty("line-" + d.key, "line-width", lineWidth(w));
   });
   for (const r of document.querySelectorAll("input[name=base]")) r.addEventListener("change", () => setBase(r.value));
 });
