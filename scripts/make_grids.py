@@ -139,8 +139,8 @@ def sydney() -> Scene:
         blurb=(
             "The same zone-56 grid realised on three datums. AGD66 to GDA94 is "
             "about 200 m north-east; GDA94 to GDA2020 is about 1.8 m of plate "
-            "motion. Zoom out and the first disappears around z12; the second "
-            "was never visible above z18."
+            "motion. The first drops below a pixel around z8; the second only "
+            "shows at all above about z16."
         ),
         display_frame="EPSG:7844",
         centre_en=(337_542, 6_250_102),
@@ -162,6 +162,67 @@ def sydney() -> Scene:
     return s
 
 
+def melbourne() -> Scene:
+    # VicGrid: one Lambert conic for the whole state instead of a zone split at
+    # 144E, and VicGrid94 moved the false northing from 4,500,000 to 2,500,000
+    # so that VicGrid66 and VicGrid94 could never be confused: the same label
+    # is 2,000 km apart. VicGrid2020 kept the VicGrid94 origin, so that pair is
+    # back to the usual 1.8 m.
+    bbox = (144.6, -38.2, 145.4, -37.5)
+    s = Scene(
+        key="melbourne",
+        title="Melbourne, VicGrid",
+        blurb=(
+            "Three tiers at once. VicGrid66 vs VicGrid94 differ by 2,000 km in "
+            "northing on purpose: the false origin was moved so the mistake "
+            "could not be subtle. Turn VicGrid66 on and the grid is simply not "
+            "here; it is in the Southern Ocean. VicGrid94 vs VicGrid2020 is "
+            "the ordinary 1.8 m."
+        ),
+        display_frame="EPSG:7844",
+        centre_en=(2_496_751, 2_409_712),
+        half_km=6,
+        spacings_m=(1000, 100),
+        bbox_ll=bbox,
+    )
+    s.datums = [
+        Datum("vicgrid66", "VicGrid66 (AGD66)", "EPSG:3110", "EPSG:3110", "EPSG:4202", color="#D55E00", dash=[1, 0]),
+        Datum("vicgrid94", "VicGrid94 (GDA94)", "EPSG:3111", "EPSG:3111", "EPSG:4283", color="#0072B2", dash=[4, 3]),
+        Datum("vicgrid2020", "VicGrid2020 (GDA2020)", "EPSG:7899", "EPSG:7899", "EPSG:7844", color="#CC79A7", dash=[1, 2]),
+    ]
+    print("melbourne", file=sys.stderr)
+    for d in s.datums:
+        d.to_display = None if d.geographic == s.display_frame else best_transformer(d.geographic, s.display_frame, (140, -60, 150, -34))
+    return s
+
+
+def paris() -> Scene:
+    bbox = (2.0, 48.6, 2.7, 49.1)
+    s = Scene(
+        key="paris",
+        title="Paris, UTM zone 31N",
+        blurb=(
+            "ED50 versus ETRS89, the European classic. ED50 was the first "
+            "continental datum, built on the Hayford ellipsoid from post-war "
+            "triangulation, and in Paris the same UTM label sits about 230 m "
+            "from its ETRS89 twin. Below a pixel by about z8."
+        ),
+        display_frame="EPSG:4258",
+        centre_en=(448_252, 5_411_955),
+        half_km=6,
+        spacings_m=(1000, 100),
+        bbox_ll=bbox,
+    )
+    s.datums = [
+        Datum("ed50", "ED50 (UTM 31N)", "EPSG:23031", "EPSG:23031", "EPSG:4230", color="#D55E00", dash=[1, 0]),
+        Datum("etrs89", "ETRS89 (UTM 31N)", "EPSG:25831", "EPSG:25831", "EPSG:4258", color="#0072B2", dash=[4, 3]),
+    ]
+    print("paris", file=sys.stderr)
+    for d in s.datums:
+        d.to_display = None if d.geographic == s.display_frame else best_transformer(d.geographic, s.display_frame, bbox)
+    return s
+
+
 def seattle() -> Scene:
     bbox = (-122.6, 47.4, -122.1, 47.8)
     s = Scene(
@@ -170,7 +231,7 @@ def seattle() -> Scene:
         blurb=(
             "NAD83(2011) versus NATRF2022 on the UTM zone 10N grid. The shift "
             "is 1 to 2 m, mostly the NAD83-vs-ITRF frame offset plus a decade "
-            "of plate motion. Invisible until about z18, then suddenly a "
+            "of plate motion. Invisible until about z16, then suddenly a "
             "parcel-boundary problem."
         ),
         display_frame="NATRF2022",
@@ -275,7 +336,7 @@ def write_scene(s: Scene):
 
 def main():
     OUT.mkdir(exist_ok=True)
-    scenes = [write_scene(s) for s in (sydney(), seattle())]
+    scenes = [write_scene(s) for s in (sydney(), melbourne(), paris(), seattle())]
     meta = {"proj_version": pyproj.proj_version_str, "scenes": scenes}
     with open(OUT / "scenes.json", "w") as f:
         json.dump(meta, f, indent=1)

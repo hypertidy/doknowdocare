@@ -96,6 +96,7 @@ const IMAGERY = {
 };
 
 let META = null, scene = null, map = null;
+const HOWARD = new URLSearchParams(location.search).has("howard");
 const enabled = {};   // datum key -> bool
 
 function pixelSize(zoom, lat) {
@@ -105,7 +106,7 @@ function pixelSize(zoom, lat) {
 
 function verdict(px) {
   if (px < 0.5) return ["invisible", "ok"];
-  if (px < 2) return ["sub-pixel", "ok"];
+  if (px < 2) return [HOWARD ? "gnat's ass" : "sub-pixel", "ok"];
   if (px < 10) return ["visible", "warn"];
   return ["GLARING", "bad"];
 }

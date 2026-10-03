@@ -16,7 +16,13 @@ offset in metres and in screen pixels at the current zoom, so the answer to
 ## Scenes
 
 - **Sydney, MGA zone 56**: AGD66 (AMG), GDA94 (MGA94), GDA2020 (MGA2020), centred on Sydney Harbour where the author learned that longlat is not longlat.
+- **Melbourne, VicGrid**: VicGrid66, VicGrid94, VicGrid2020. VicGrid94 moved the
+  false northing by 2,000,000 m so it could never be confused with VicGrid66;
+  the same label is 2,000 km away. VicGrid2020 kept the VicGrid94 origin.
+- **Paris, UTM zone 31N**: ED50 vs ETRS89, about 230 m.
 - **Seattle, UTM zone 10N**: NAD83(2011) at epoch 2010.0 vs NATRF2022.
+
+Append `?howard` to the URL for the alternative sub-pixel verdict.
 
 ## How the data is made
 

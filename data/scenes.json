@@ -4,7 +4,7 @@
   {
    "key": "sydney",
    "title": "Sydney, MGA zone 56",
-   "blurb": "The same zone-56 grid realised on three datums. AGD66 to GDA94 is about 200 m north-east; GDA94 to GDA2020 is about 1.8 m of plate motion. Zoom out and the first disappears around z12; the second was never visible above z18.",
+   "blurb": "The same zone-56 grid realised on three datums. AGD66 to GDA94 is about 200 m north-east; GDA94 to GDA2020 is about 1.8 m of plate motion. The first drops below a pixel around z8; the second only shows at all above about z16.",
    "display_frame": "EPSG:7844",
    "centre": [
     151.243437805,
@@ -75,9 +75,132 @@
    ]
   },
   {
+   "key": "melbourne",
+   "title": "Melbourne, VicGrid",
+   "blurb": "Three tiers at once. VicGrid66 vs VicGrid94 differ by 2,000 km in northing on purpose: the false origin was moved so the mistake could not be subtle. Turn VicGrid66 on and the grid is simply not here; it is in the Southern Ocean. VicGrid94 vs VicGrid2020 is the ordinary 1.8 m.",
+   "display_frame": "EPSG:7844",
+   "centre": [
+    144.963100416,
+    -37.813603875
+   ],
+   "centre_en": [
+    2496751,
+    2409712
+   ],
+   "spacings_m": [
+    1000,
+    100
+   ],
+   "datums": [
+    {
+     "key": "vicgrid66",
+     "label": "VicGrid66 (AGD66)",
+     "crs": "EPSG:3110",
+     "color": "#D55E00",
+     "dash": [
+      1,
+      0
+     ],
+     "file": "data/melbourne/vicgrid66.geojson"
+    },
+    {
+     "key": "vicgrid94",
+     "label": "VicGrid94 (GDA94)",
+     "crs": "EPSG:3111",
+     "color": "#0072B2",
+     "dash": [
+      4,
+      3
+     ],
+     "file": "data/melbourne/vicgrid94.geojson"
+    },
+    {
+     "key": "vicgrid2020",
+     "label": "VicGrid2020 (GDA2020)",
+     "crs": "EPSG:7899",
+     "color": "#CC79A7",
+     "dash": [
+      1,
+      2
+     ],
+     "file": "data/melbourne/vicgrid2020.geojson"
+    }
+   ],
+   "offsets": [
+    {
+     "from": "vicgrid66",
+     "to": "vicgrid94",
+     "metres": 1961080.117,
+     "bearing": 0.0
+    },
+    {
+     "from": "vicgrid66",
+     "to": "vicgrid2020",
+     "metres": 1961078.656,
+     "bearing": 0.0
+    },
+    {
+     "from": "vicgrid94",
+     "to": "vicgrid2020",
+     "metres": 1.552,
+     "bearing": 199.7
+    }
+   ]
+  },
+  {
+   "key": "paris",
+   "title": "Paris, UTM zone 31N",
+   "blurb": "ED50 versus ETRS89, the European classic. ED50 was the first continental datum, built on the Hayford ellipsoid from post-war triangulation, and in Paris the same UTM label sits about 230 m from its ETRS89 twin. Below a pixel by about z8.",
+   "display_frame": "EPSG:4258",
+   "centre": [
+    2.29449997,
+    48.858400811
+   ],
+   "centre_en": [
+    448252,
+    5411955
+   ],
+   "spacings_m": [
+    1000,
+    100
+   ],
+   "datums": [
+    {
+     "key": "ed50",
+     "label": "ED50 (UTM 31N)",
+     "crs": "EPSG:23031",
+     "color": "#D55E00",
+     "dash": [
+      1,
+      0
+     ],
+     "file": "data/paris/ed50.geojson"
+    },
+    {
+     "key": "etrs89",
+     "label": "ETRS89 (UTM 31N)",
+     "crs": "EPSG:25831",
+     "color": "#0072B2",
+     "dash": [
+      4,
+      3
+     ],
+     "file": "data/paris/etrs89.geojson"
+    }
+   ],
+   "offsets": [
+    {
+     "from": "ed50",
+     "to": "etrs89",
+     "metres": 227.207,
+     "bearing": 23.4
+    }
+   ]
+  },
+  {
    "key": "seattle",
    "title": "Seattle, UTM zone 10N",
-   "blurb": "NAD83(2011) versus NATRF2022 on the UTM zone 10N grid. The shift is 1 to 2 m, mostly the NAD83-vs-ITRF frame offset plus a decade of plate motion. Invisible until about z18, then suddenly a parcel-boundary problem.",
+   "blurb": "NAD83(2011) versus NATRF2022 on the UTM zone 10N grid. The shift is 1 to 2 m, mostly the NAD83-vs-ITRF frame offset plus a decade of plate motion. Invisible until about z16, then suddenly a parcel-boundary problem.",
    "display_frame": "NATRF2022",
    "centre": [
     -122.334734915,
