@@ -15,7 +15,7 @@ offset in metres and in screen pixels at the current zoom, so the answer to
 
 ## Scenes
 
-- **Hobart, MGA zone 55**: AGD66 (AMG), GDA94 (MGA94), GDA2020 (MGA2020).
+- **Sydney, MGA zone 56**: AGD66 (AMG), GDA94 (MGA94), GDA2020 (MGA2020), centred on Sydney Harbour where the author learned that longlat is not longlat.
 - **Seattle, UTM zone 10N**: NAD83(2011) at epoch 2010.0 vs NATRF2022.
 
 ## How the data is made

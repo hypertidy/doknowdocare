@@ -2,17 +2,17 @@
  "proj_version": "9.8.1",
  "scenes": [
   {
-   "key": "hobart",
-   "title": "Hobart, MGA zone 55",
-   "blurb": "The same zone-55 grid realised on three datums. AGD66 to GDA94 is about 200 m north-east; GDA94 to GDA2020 is about 1.8 m of plate motion. Zoom out and the first disappears around z12; the second was never visible above z18.",
+   "key": "sydney",
+   "title": "Sydney, MGA zone 56",
+   "blurb": "The same zone-56 grid realised on three datums. AGD66 to GDA94 is about 200 m north-east; GDA94 to GDA2020 is about 1.8 m of plate motion. Zoom out and the first disappears around z12; the second was never visible above z18.",
    "display_frame": "EPSG:7844",
    "centre": [
-    147.330633622,
-    -42.884123017
+    151.243437805,
+    -33.876923337
    ],
    "centre_en": [
-    527000,
-    5252000
+    337542,
+    6250102
    ],
    "spacings_m": [
     1000,
@@ -21,44 +21,44 @@
    "datums": [
     {
      "key": "agd66",
-     "label": "AGD66 (AMG zone 55)",
-     "crs": "EPSG:20255",
+     "label": "AGD66 (AMG zone 56)",
+     "crs": "EPSG:20256",
      "color": "#c0392b",
-     "file": "data/hobart/agd66.geojson"
+     "file": "data/sydney/agd66.geojson"
     },
     {
      "key": "gda94",
-     "label": "GDA94 (MGA94 zone 55)",
-     "crs": "EPSG:28355",
+     "label": "GDA94 (MGA94 zone 56)",
+     "crs": "EPSG:28356",
      "color": "#2980b9",
-     "file": "data/hobart/gda94.geojson"
+     "file": "data/sydney/gda94.geojson"
     },
     {
      "key": "gda2020",
-     "label": "GDA2020 (MGA2020 zone 55)",
-     "crs": "EPSG:7855",
+     "label": "GDA2020 (MGA2020 zone 56)",
+     "crs": "EPSG:7856",
      "color": "#27ae60",
-     "file": "data/hobart/gda2020.geojson"
+     "file": "data/sydney/gda2020.geojson"
     }
    ],
    "offsets": [
     {
      "from": "agd66",
      "to": "gda94",
-     "metres": 214.072,
-     "bearing": 211.4
+     "metres": 216.603,
+     "bearing": 209.8
     },
     {
      "from": "agd66",
      "to": "gda2020",
-     "metres": 215.507,
-     "bearing": 211.3
+     "metres": 218.073,
+     "bearing": 209.8
     },
     {
      "from": "gda94",
      "to": "gda2020",
      "metres": 1.493,
-     "bearing": 195.4
+     "bearing": 199.6
     }
    ]
   },

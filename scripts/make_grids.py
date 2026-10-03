@@ -128,29 +128,31 @@ class Scene:
     bbox_ll: tuple[float, float, float, float] = (0, 0, 0, 0)
 
 
-def hobart() -> Scene:
-    bbox = (147.0, -43.2, 147.7, -42.6)
+def sydney() -> Scene:
+    # -33.8769221, 151.2434361: Sydney Harbour, where the author learned that
+    # longlat ain't longlat.
+    bbox = (150.9, -34.1, 151.5, -33.6)
     s = Scene(
-        key="hobart",
-        title="Hobart, MGA zone 55",
+        key="sydney",
+        title="Sydney, MGA zone 56",
         blurb=(
-            "The same zone-55 grid realised on three datums. AGD66 to GDA94 is "
+            "The same zone-56 grid realised on three datums. AGD66 to GDA94 is "
             "about 200 m north-east; GDA94 to GDA2020 is about 1.8 m of plate "
             "motion. Zoom out and the first disappears around z12; the second "
             "was never visible above z18."
         ),
         display_frame="EPSG:7844",
-        centre_en=(527_000, 5_252_000),
+        centre_en=(337_542, 6_250_102),
         half_km=6,
         spacings_m=(1000, 100),
         bbox_ll=bbox,
     )
     s.datums = [
-        Datum("agd66", "AGD66 (AMG zone 55)", "EPSG:20255", "EPSG:20255", "EPSG:4202", color="#c0392b"),
-        Datum("gda94", "GDA94 (MGA94 zone 55)", "EPSG:28355", "EPSG:28355", "EPSG:4283", color="#2980b9"),
-        Datum("gda2020", "GDA2020 (MGA2020 zone 55)", "EPSG:7855", "EPSG:7855", "EPSG:7844", color="#27ae60"),
+        Datum("agd66", "AGD66 (AMG zone 56)", "EPSG:20256", "EPSG:20256", "EPSG:4202", color="#c0392b"),
+        Datum("gda94", "GDA94 (MGA94 zone 56)", "EPSG:28356", "EPSG:28356", "EPSG:4283", color="#2980b9"),
+        Datum("gda2020", "GDA2020 (MGA2020 zone 56)", "EPSG:7856", "EPSG:7856", "EPSG:7844", color="#27ae60"),
     ]
-    print("hobart", file=sys.stderr)
+    print("sydney", file=sys.stderr)
     for d in s.datums:
         if d.geographic == s.display_frame:
             d.to_display = None
@@ -272,7 +274,7 @@ def write_scene(s: Scene):
 
 def main():
     OUT.mkdir(exist_ok=True)
-    scenes = [write_scene(s) for s in (hobart(), seattle())]
+    scenes = [write_scene(s) for s in (sydney(), seattle())]
     meta = {"proj_version": pyproj.proj_version_str, "scenes": scenes}
     with open(OUT / "scenes.json", "w") as f:
         json.dump(meta, f, indent=1)
