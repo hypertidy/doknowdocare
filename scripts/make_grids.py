@@ -23,6 +23,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import numpy as np
 import pyproj
 from pyproj import CRS, Transformer
 from pyproj.aoi import AreaOfInterest
@@ -285,6 +286,54 @@ def project_to_display(d: Datum, pts):
     return list(zip(lon, lat))
 
 
+
+# --------------------------------------------------------------------------
+# Click readout: polynomial fits from the display frame to each datum
+# --------------------------------------------------------------------------
+
+def poly_terms(x, y):
+    """Quadratic in normalised coords: 1, x, y, x^2, xy, y^2."""
+    return np.column_stack([np.ones_like(x), x, y, x * x, x * y, y * y])
+
+
+def fit_readout(s: Scene, d: Datum):
+    """Least-squares quadratic from display (lon, lat) to this datum's
+    (lon, lat) and (E, N), over 1.5x the drawn box. Residuals are checked and
+    reported; over a 12 km scene they are well under a centimetre, which is
+    far below the accuracy of the datum step itself."""
+    proj_crs = CRS.from_user_input(d.projected)
+    geog_crs = CRS.from_user_input(d.geographic) if d.geographic else proj_crs.geodetic_crs
+    fwd = Transformer.from_crs(geog_crs, proj_crs, always_xy=True)
+    # sample in the datum's own projected space, carry to display frame
+    e0, n0 = s.centre_en
+    half = s.half_km * 1500.0
+    n = 13
+    ee, nn = np.meshgrid(np.linspace(e0 - half, e0 + half, n), np.linspace(n0 - half, n0 + half, n))
+    pts = list(zip(ee.ravel(), nn.ravel()))
+    disp = np.array(project_to_display(d, pts))              # display lon/lat
+    inv = Transformer.from_crs(proj_crs, geog_crs, always_xy=True)
+    glon, glat = inv.transform(ee.ravel(), nn.ravel())       # datum lon/lat
+    # normalise display coords about the scene centre for conditioning
+    c = disp.mean(axis=0)
+    sc = np.array([0.1, 0.1])
+    X = poly_terms((disp[:, 0] - c[0]) / sc[0], (disp[:, 1] - c[1]) / sc[1])
+    out = {}
+    for name, target in (("lon", glon), ("lat", glat), ("E", ee.ravel()), ("N", nn.ravel())):
+        coef, *_ = np.linalg.lstsq(X, target, rcond=None)
+        resid = X @ coef - target
+        out[name] = [float(v) for v in coef]
+        unit = "deg" if name in ("lon", "lat") else "m"
+        worst = float(np.abs(resid).max())
+        if name in ("lon", "lat"):
+            worst_m = worst * 111_000
+        else:
+            worst_m = worst
+        if worst_m > 0.01:
+            print(f"    WARNING {d.key} {name} fit residual {worst_m:.4f} m", file=sys.stderr)
+    return {"origin": [float(c[0]), float(c[1])], "scale": [0.1, 0.1], "coef": out,
+            "valid_km": s.half_km * 1.5}
+
+
 def write_scene(s: Scene):
     scene_dir = OUT / s.key
     scene_dir.mkdir(parents=True, exist_ok=True)
@@ -333,7 +382,7 @@ def write_scene(s: Scene):
         "spacings_m": list(s.spacings_m),
         "anchors": anchors,
         "datums": [{"key": d.key, "label": d.label, "crs": d.note, "color": d.color, "dash": d.dash,
-                    "file": f"data/{s.key}/{d.key}.geojson"} for d in s.datums],
+                    "file": f"data/{s.key}/{d.key}.geojson", "readout": fit_readout(s, d)} for d in s.datums],
         "offsets": offsets,
     }
 

@@ -42,6 +42,17 @@
   .foot { color: var(--muted); font-size: 12px; margin-top: 12px; }
   .foot a { color: inherit; }
   .zoom { font-family: ui-monospace, monospace; }
+  #click { position: absolute; right: 12px; bottom: 36px; width: 360px; max-width: calc(100vw - 24px);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15); z-index: 5; display: none; }
+  #click.on { display: block; }
+  #click h2 { margin-top: 0; }
+  #click table { font-family: ui-monospace, monospace; font-size: 12.5px; }
+  #click td { padding: 2px 4px; }
+  #click td.k { color: var(--muted); font-family: system-ui, sans-serif; }
+  #click .x { position: absolute; top: 6px; right: 8px; border: 0; background: none; font-size: 16px; }
+  #click .warn { color: var(--warn); font-size: 12px; }
+  #click .hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
   button { font: inherit; padding: 3px 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 4px; cursor: pointer; }
 </style>
 </head>
@@ -82,6 +93,13 @@
     <a href="https://github.com/hypertidy/doknowdocare">Source</a>.</p>
 </div>
 
+<div id="click">
+  <button class="x" id="clickclose" title="close">x</button>
+  <h2>Clicked point</h2>
+  <table id="clicktab"></table>
+  <p class="hint">Same spot, each datum's coordinates. Click elsewhere to move; drag the pin.</p>
+</div>
+
 <script>
 const OPENFREEMAP = "https://tiles.openfreemap.org/styles/liberty";
 const IMAGERY = {
@@ -114,6 +132,41 @@ function verdict(px) {
 
 function lineWidth(w) {
   return ["case", ["get", "anchor"], w * 3.2, ["==", ["get", "spacing"], scene.spacings_m[0]], w * 1.6, w];
+}
+
+function evalReadout(r, lon, lat) {
+  const x = (lon - r.origin[0]) / r.scale[0], y = (lat - r.origin[1]) / r.scale[1];
+  const T = [1, x, y, x * x, x * y, y * y];
+  const f = (c) => c.reduce((acc, v, i) => acc + v * T[i], 0);
+  return { lon: f(r.coef.lon), lat: f(r.coef.lat), E: f(r.coef.E), N: f(r.coef.N) };
+}
+
+let marker = null;
+function showClick(lngLat) {
+  const lon = lngLat.lng, lat = lngLat.lat;
+  if (!marker) {
+    marker = new maplibregl.Marker({ draggable: true, color: "#333" }).setLngLat(lngLat).addTo(map);
+    marker.on("drag", () => showClick(marker.getLngLat()));
+  } else marker.setLngLat(lngLat);
+  const t = document.getElementById("clicktab");
+  const dist = haversineKm(lon, lat, scene.centre[0], scene.centre[1]);
+  const valid = scene.datums[0].readout.valid_km;
+  let html = `<tr><td class="k">map (${scene.display_frame} as WGS84)</td><td>${lon.toFixed(7)}</td><td>${lat.toFixed(7)}</td></tr>`;
+  html += `<tr><td class="k"></td><td class="k">lon / E</td><td class="k">lat / N</td></tr>`;
+  for (const d of scene.datums) {
+    const v = evalReadout(d.readout, lon, lat);
+    html += `<tr><td class="k" style="color:${d.color}">${d.label}</td><td>${v.lon.toFixed(7)}</td><td>${v.lat.toFixed(7)}</td></tr>`;
+    html += `<tr><td class="k" style="color:${d.color}">&nbsp;&nbsp;${d.crs}</td><td>${v.E.toFixed(2)}</td><td>${v.N.toFixed(2)}</td></tr>`;
+  }
+  if (dist > valid) html += `<tr><td colspan="3" class="warn">${dist.toFixed(0)} km from the scene centre: beyond the ${valid} km fitted box, these are extrapolated.</td></tr>`;
+  t.innerHTML = html;
+  document.getElementById("click").classList.add("on");
+}
+
+function haversineKm(lon1, lat1, lon2, lat2) {
+  const R = 6371, r = Math.PI / 180;
+  const a = Math.sin((lat2 - lat1) * r / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lon2 - lon1) * r / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 function datumById(k) { return scene.datums.find(d => d.key === k); }
@@ -212,6 +265,7 @@ function loadScene(key) {
   renderDatums();
   if (map.isStyleLoaded()) { addGridLayers(); setVisibility(); }
   map.jumpTo({ center: scene.centre, zoom: 15 });
+  if (marker) { marker.remove(); marker = null; document.getElementById("click").classList.remove("on"); }
   renderOffsets();
   history.replaceState(null, "", "#" + key);
 }
@@ -241,6 +295,11 @@ fetch("data/scenes.json").then(r => r.json()).then(meta => {
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), "top-right");
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 160 }), "bottom-right");
   map.on("load", () => { loadScene(initial); });
+  map.on("click", (e) => showClick(e.lngLat));
+  document.getElementById("clickclose").addEventListener("click", () => {
+    document.getElementById("click").classList.remove("on");
+    if (marker) { marker.remove(); marker = null; }
+  });
   map.on("zoom", renderOffsets);
   map.on("move", renderOffsets);
 

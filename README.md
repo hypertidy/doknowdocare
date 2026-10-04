@@ -51,6 +51,14 @@ The datum steps:
   ITRF2020 at epoch 2020.0, so that is the answer. The plate step is about
   0.15 m; the frame step is 1 to 2 m.
 
+Clicking the map gives that spot's longitude/latitude and easting/northing in
+every datum of the scene. There is no PROJ in the browser (proj4js would quietly
+substitute a Helmert, or nothing, for the grid-based steps), so the script also
+fits a quadratic polynomial per datum from the display frame to that datum's
+lon/lat and E/N over 1.5x the drawn box. Residuals are checked at build time
+and are under a centimetre, far below the accuracy of the datum step itself.
+Outside the fitted box the panel says the numbers are extrapolated.
+
 Regenerate with:
 
     pip install pyproj
